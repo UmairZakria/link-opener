@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Link Opener Settings</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <div class="logo-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+          <polyline points="15 3 21 3 21 9"></polyline>
+          <line x1="10" y1="14" x2="21" y2="3"></line>
+        </svg>
+      </div>
+      <div class="header-text">
+        <h1>Link Opener</h1>
+        <p class="subtitle">Tab Opening Preferences</p>
+      </div>
+    </header>
+
+    <main class="content">
+      <!-- Address Links Section -->
+      <section class="section">
+        <div class="section-header">
+          <div class="section-title">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+              <circle cx="12" cy="10" r="3"></circle>
+            </svg>
+            <h2>Address Links</h2>
+          </div>
+          <span class="badge" id="addr-count">3 active</span>
+        </div>
+
+        <div class="toggle-group">
+          <label class="toggle-row" for="openAddressUnmask">
+            <div class="toggle-info">
+              <span class="site-name">Unmask</span>
+              <span class="site-url">unmask.com</span>
+            </div>
+            <div class="switch">
+              <input type="checkbox" id="openAddressUnmask" checked>
+              <span class="slider"></span>
+            </div>
+          </label>
+
+          <label class="toggle-row" for="openAddressThatsThem">
+            <div class="toggle-info">
+              <span class="site-name">That's Them</span>
+              <span class="site-url">thatsthem.com</span>
+            </div>
+            <div class="switch">
+              <input type="checkbox" id="openAddressThatsThem" checked>
+              <span class="slider"></span>
+            </div>
+          </label>
+
+          <label class="toggle-row" for="openAddressAdvanced">
+            <div class="toggle-info">
+              <span class="site-name">Advanced Background Checks</span>
+              <span class="site-url">advancedbackgroundchecks.com</span>
+            </div>
+            <div class="switch">
+              <input type="checkbox" id="openAddressAdvanced" checked>
+              <span class="slider"></span>
+            </div>
+          </label>
+        </div>
+      </section>
+
+      <!-- Name Links Section -->
+      <section class="section">
+        <div class="section-header">
+          <div class="section-title">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+            <h2>Name Links</h2>
+          </div>
+          <span class="badge" id="name-count">2 active</span>
+        </div>
+
+        <div class="toggle-group">
+          <label class="toggle-row" for="openNameThatsThem">
+            <div class="toggle-info">
+              <span class="site-name">That's Them</span>
+              <span class="site-url">thatsthem.com</span>
+            </div>
+            <div class="switch">
+              <input type="checkbox" id="openNameThatsThem" checked>
+              <span class="slider"></span>
+            </div>
+          </label>
+
+          <label class="toggle-row" for="openNameAdvanced">
+            <div class="toggle-info">
+              <span class="site-name">Advanced Background Checks</span>
+              <span class="site-url">advancedbackgroundchecks.com</span>
+            </div>
+            <div class="switch">
+              <input type="checkbox" id="openNameAdvanced" checked>
+              <span class="slider"></span>
+            </div>
+          </label>
+        </div>
+      </section>
+    </main>
+
+   
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>
