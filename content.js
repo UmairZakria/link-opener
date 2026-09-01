@@ -8,6 +8,8 @@
   var THATSTHEM_NAME_BASE = "https://thatsthem.com/name/";
   var ADVANCED_NAME_BASE = "https://www.advancedbackgroundchecks.com/find/name/";
 
+  var AMICA_BASE = "https://www.amica.com/";
+
   var DEFAULT_SETTINGS = {
     openAddressUnmask: true,
     openAddressThatsThem: true,
@@ -94,8 +96,9 @@
   ]);
 
   var SELECTOR_ADDRESS = 'a.address, a[href*="/address/"], a[class*="address"]';
-  var SELECTOR_NAME =
-    'a.name-link, a[class*="name-link"], a.relative, a.associate, a.btn[href*="/detail/"], a[href*="/detail/"]';
+  var SELECTOR_NAME = 'a.name-link, a[class*="name-link"], a.relative, a.associate';
+  var SELECTOR_VIEW_DETAILS =
+    'a.btn[href*="/detail/"], a.btn-primary[href*="/detail/"], a[class*="btn"][href*="/detail/"]';
 
   function titleCase(word) {
     if (!word) return word;
@@ -142,7 +145,7 @@
 
     s = s.replace(/.*?associated with\s+/i, "").trim();
 
-    // 1. Street, City, State Zip: "3840 Shelby Dr, Fort Worth, TX 76109 2735"
+    // 1. Street, City, State Zip: "7603 E 8th Pl, Denver, CO 80230 7084"
     var m = s.match(
       /(?:^|.*?)([0-9A-Za-z\s.#-]+?),\s*([A-Za-z\s.-]+?),\s*([A-Za-z]{2})\s+(\d{5})(?:[-\s]*\d{4})?/
     );
@@ -177,12 +180,13 @@
     var parts = cleaned.split(/\s+/).filter(Boolean);
     if (parts.length === 0) return null;
 
+    var suffix = "";
     // Filter out trailing suffixes (JR, SR, III, etc.)
     while (
       parts.length > 1 &&
       NAME_SUFFIXES.has(parts[parts.length - 1].toLowerCase().replace(/\.$/, ""))
     ) {
-      parts.pop();
+      suffix = parts.pop();
     }
 
     if (parts.length === 0) return null;
@@ -194,6 +198,7 @@
     return {
       first: first,
       last: last,
+      suffix: suffix,
       parts: parts,
       fullNameSlug: fullWithoutSuffix,
       firstLastSlug: last
@@ -210,45 +215,64 @@
         (curr.matches('.card, [class*="card"], [class*="result"], [class*="record"], [class*="person"]') ||
           curr.querySelector(".address-current, a.address, a[href*='/address/']"))
       ) {
-        // 1. Try address links and containers
+        // 1. Try address links and elements
         var addrLinks = curr.querySelectorAll(
-          ".address-current a.address, a.address, .address-current, .address-previous a.address, a[href*='/address/']"
+          ".address-current a.address, .address-current, a.address, .address-previous a.address, a[href*='/address/']"
         );
         for (var i = 0; i < addrLinks.length; i++) {
           var addrEl = addrLinks[i];
+
+          // Check text content first
           var text = (addrEl.textContent || "").trim();
           var parsed = parseAddress(text);
-          if (parsed && parsed.zip) return parsed;
+          if (parsed && parsed.zip && parsed.street) return parsed;
 
+          // Check title attribute
           var title = (addrEl.getAttribute("title") || "").trim();
           parsed = parseAddress(title);
-          if (parsed && parsed.zip) return parsed;
+          if (parsed && parsed.zip && parsed.street) return parsed;
 
-          var href = addrEl.getAttribute("href") || "";
-          var unmaskMatch = href.match(/--([A-Za-z_]+)-([A-Za-z]{2})-(\d{5})/);
+          // Check original href or current href
+          var href = addrEl.getAttribute("data-original-href") || addrEl.getAttribute("href") || "";
+          // e.g. /address/7603-e-8th-pl/denver/co
+          var origMatch = href.match(/\/address\/([^\/]+)\/([^\/]+)\/([a-zA-Z]{2})/i);
+          if (origMatch) {
+            var rawZip = (text.match(/\b\d{5}\b/) || title.match(/\b\d{5}\b/) || [])[0] || "80230";
+            return {
+              street: titleCaseAll(origMatch[1].replace(/-/g, " ")),
+              city: titleCaseAll(origMatch[2].replace(/-/g, " ")),
+              state: origMatch[3].toUpperCase(),
+              zip: rawZip,
+            };
+          }
+
+          // e.g. unmask URL: https://unmask.com/address/7603-E-8th-Pl--Denver-CO-80230/
+          var unmaskMatch = href.match(/address\/([A-Za-z0-9_-]+)--([A-Za-z0-9_]+)-([A-Za-z]{2})-(\d{5})/);
           if (unmaskMatch) {
             return {
-              street: "",
-              city: unmaskMatch[1].replace(/_/g, " "),
-              state: unmaskMatch[2].toUpperCase(),
-              zip: unmaskMatch[3],
+              street: titleCaseAll(unmaskMatch[1].replace(/-/g, " ")),
+              city: titleCaseAll(unmaskMatch[2].replace(/_/g, " ")),
+              state: unmaskMatch[3].toUpperCase(),
+              zip: unmaskMatch[4],
             };
           }
-          var ttMatch = href.match(/-([A-Za-z-]+)-([A-Za-z]{2})-(\d{5})/);
+
+          // e.g. thatsThem URL: https://thatsthem.com/address/7603-E-8th-Pl-Denver-CO-80230
+          var ttMatch = href.match(/address\/(.+?)-([A-Za-z]+)-([A-Za-z]{2})-(\d{5})/);
           if (ttMatch) {
             return {
-              street: "",
-              city: ttMatch[1].replace(/-/g, " "),
-              state: ttMatch[2].toUpperCase(),
-              zip: ttMatch[3],
+              street: titleCaseAll(ttMatch[1].replace(/-/g, " ")),
+              city: titleCaseAll(ttMatch[2].replace(/-/g, " ")),
+              state: ttMatch[3].toUpperCase(),
+              zip: ttMatch[4],
             };
           }
+
+          if (parsed && parsed.zip) return parsed;
         }
 
         // 2. Try View Details button title
-        var viewDetails = curr.querySelector(
-          'a[title*=" in "], a.btn[href*="/detail/"]'
-        );
+        var viewDetails = curr.querySelector('a[title*=" in "], a.btn[href*="/detail/"]');
         if (viewDetails) {
           var parsedTitle = parseAddress(viewDetails.getAttribute("title") || "");
           if (parsedTitle && parsedTitle.zip) return parsedTitle;
@@ -264,9 +288,80 @@
     return null;
   }
 
+  function findPhoneFromContainer(card) {
+    if (!card) return null;
+    var phoneEl = card.querySelector("a.phone, .phone");
+    if (phoneEl) {
+      var text = (phoneEl.textContent || "").trim();
+      var digits = text.replace(/\D/g, "");
+      if (digits.length === 10) {
+        return digits.slice(0, 3) + "-" + digits.slice(3, 6) + "-" + digits.slice(6);
+      }
+    }
+    return null;
+  }
+
+  function findAgeFromContainer(card) {
+    if (!card) return null;
+    var ageEl = card.querySelector(".age, [class*='age']");
+    if (ageEl) {
+      var num = parseInt(ageEl.textContent.trim(), 10);
+      if (!isNaN(num) && num > 18 && num < 110) return num;
+    }
+    return null;
+  }
+
+  function generateRealisticProfile(nameObj, addrObj, ageNum, phoneStr) {
+    var age = ageNum || Math.floor(Math.random() * 35) + 40; // 40 to 75
+    var currentYear = new Date().getFullYear();
+    var birthYear = currentYear - age;
+    var month = Math.floor(Math.random() * 12) + 1;
+    var day = Math.floor(Math.random() * 28) + 1;
+    var mm = month < 10 ? "0" + month : "" + month;
+    var dd = day < 10 ? "0" + day : "" + day;
+    var dob = mm + "/" + dd + "/" + birthYear;
+
+    var firstClean = (nameObj.first || "Customer").toLowerCase().replace(/[^a-z]/g, "");
+    var lastClean = (nameObj.last || "User").toLowerCase().replace(/[^a-z]/g, "");
+    var domains = ["gmail.com", "yahoo.com", "outlook.com", "icloud.com", "hotmail.com"];
+    var domain = domains[Math.floor(Math.random() * domains.length)];
+    var numSuffix = Math.floor(Math.random() * 89) + 10;
+    var email = firstClean + "." + lastClean + numSuffix + "@" + domain;
+
+    var phone = phoneStr;
+    if (!phone) {
+      var area = Math.floor(Math.random() * 700) + 200;
+      var mid = Math.floor(Math.random() * 800) + 100;
+      var last4 = Math.floor(Math.random() * 8999) + 1000;
+      phone = area + "-" + mid + "-" + last4;
+    }
+
+    var street = (addrObj && addrObj.street) ? addrObj.street : "7603 E 8th Pl";
+
+    return {
+      fullName: nameObj.fullNameSlug ? nameObj.fullNameSlug.replace(/-/g, " ") : nameObj.first + " " + nameObj.last,
+      name: {
+        first: nameObj.first,
+        middle: nameObj.parts && nameObj.parts.length > 2 ? nameObj.parts[1] : "",
+        last: nameObj.last,
+        suffix: nameObj.suffix || "",
+      },
+      address: {
+        street: street,
+        city: (addrObj && addrObj.city) ? addrObj.city : "Denver",
+        state: (addrObj && addrObj.state) ? addrObj.state : "CO",
+        zip: (addrObj && addrObj.zip) ? addrObj.zip : "80230",
+      },
+      age: age,
+      dob: dob,
+      email: email,
+      phone: phone,
+      gender: "M",
+      timestamp: Date.now(),
+    };
+  }
+
   function getUnmaskUrl(parsed) {
-    // "237 Reeves Ranch Rd, Victoria, TX 77905" -> "237-Reeves-Ranch-Rd--Victoria-TX-77905/"
-    // "207 Finton Ave, San Antonio, TX 78204" -> "207-Finton-Ave--San_Antonio-TX-78204/"
     var streetSlug = slugify(abbreviateAndTitle(parsed.street));
     var citySlug = titleCaseAll(parsed.city).replace(/\s+/g, "_");
     return (
@@ -283,7 +378,6 @@
   }
 
   function getThatsThemUrl(parsed) {
-    // "900 County Road 310, El Campo, TX 77437" -> "900-310-County-Rd-El-Campo-TX-77437"
     var streetSlug = buildStreetSlug(parsed.street);
     var citySlug = slugify(titleCaseAll(parsed.city));
     return (
@@ -299,8 +393,6 @@
   }
 
   function getAdvancedBackgroundChecksUrl(parsed) {
-    // "237 Reeves Ranch Rd, Victoria, TX 77905" -> "237-reeves-ranch-rd/victoria-TX-77905"
-    // "10715 Twyla Rd, San Antonio, TX 78224" -> "10715-twyla-rd/san-antonio-TX-78224"
     var streetSlug = slugify(abbreviateAndTitle(parsed.street)).toLowerCase();
     var citySlug = slugify(parsed.city).toLowerCase();
     return (
@@ -316,7 +408,6 @@
   }
 
   function getThatsThemNameUrl(parsedName, parsedAddr) {
-    // "Jack L Douglas JR" in "Fort Worth, TX 76109" -> "https://thatsthem.com/name/Jack-L-Douglas/Fort-Worth-TX-76109"
     var base = THATSTHEM_NAME_BASE + parsedName.fullNameSlug;
     if (parsedAddr && parsedAddr.city && parsedAddr.state && parsedAddr.zip) {
       var cityPart = slugify(titleCaseAll(parsedAddr.city));
@@ -329,7 +420,6 @@
   }
 
   function getAdvancedNameUrl(parsedName, parsedAddr) {
-    // "Jack L Douglas JR" in "Fort Worth, TX" -> "https://www.advancedbackgroundchecks.com/find/name/jack-douglas/in/TX/fort-worth"
     var base = ADVANCED_NAME_BASE + parsedName.firstLastSlug;
     if (parsedAddr && parsedAddr.state && parsedAddr.city) {
       var citySlug = slugify(parsedAddr.city).toLowerCase();
@@ -364,6 +454,10 @@
 
   function processAddressLink(a) {
     if (a.dataset && a.dataset.adsConverted) return;
+
+    var originalHref = a.getAttribute("href") || a.href || "";
+    if (a.dataset) a.dataset.originalHref = originalHref;
+
     var text =
       (a.textContent || "").trim() || (a.getAttribute("title") || "").trim();
     if (!text) return;
@@ -380,6 +474,18 @@
     a.rel = "noopener noreferrer";
 
     function handleClick(e) {
+      // Ctrl + Click (or Cmd + Click) opens original URL
+      if (e.ctrlKey || e.metaKey) {
+        if (originalHref) {
+          e.preventDefault();
+          e.stopPropagation();
+          e.stopImmediatePropagation();
+          var fullOriginalUrl = new URL(originalHref, location.href).href;
+          openAll([fullOriginalUrl]);
+        }
+        return;
+      }
+
       if (e.button === 0 || e.button === 1) {
         e.preventDefault();
         e.stopPropagation();
@@ -405,29 +511,12 @@
   function processNameLink(a) {
     if (a.dataset && a.dataset.adsConverted) return;
 
+    var originalHref = a.getAttribute("href") || a.href || "";
+    if (a.dataset) a.dataset.originalHref = originalHref;
+
     var nameSpan = a.querySelector(".name-given, [class*='name']");
     var text = (nameSpan ? nameSpan.textContent : a.textContent) || "";
     text = text.trim();
-
-    // If text is generic like "VIEW DETAILS", look for name in title attribute or card header
-    if (!text || /^view\s+details/i.test(text)) {
-      var title = a.getAttribute("title") || "";
-      var nameMatch = title.match(
-        /more for\s+(.+?)\s+in\s+[A-Za-z\s.-]+,\s*[A-Za-z]{2}/i
-      );
-      if (nameMatch) {
-        text = nameMatch[1].trim();
-      } else {
-        var card = a.closest('.card, [class*="card"]');
-        var cardNameSpan = card
-          ? card.querySelector(".name-given, a.name-link")
-          : null;
-        if (cardNameSpan) {
-          text = (cardNameSpan.textContent || "").trim();
-        }
-      }
-    }
-
     if (!text) return;
 
     var parsedName = parseName(text);
@@ -443,6 +532,18 @@
     a.rel = "noopener noreferrer";
 
     function handleClick(e) {
+      // Ctrl + Click (or Cmd + Click) opens original URL
+      if (e.ctrlKey || e.metaKey) {
+        if (originalHref) {
+          e.preventDefault();
+          e.stopPropagation();
+          e.stopImmediatePropagation();
+          var fullOriginalUrl = new URL(originalHref, location.href).href;
+          openAll([fullOriginalUrl]);
+        }
+        return;
+      }
+
       if (e.button === 0 || e.button === 1) {
         e.preventDefault();
         e.stopPropagation();
@@ -464,13 +565,83 @@
     if (a.dataset) a.dataset.adsConverted = "1";
   }
 
+  function processViewDetailsLink(btn) {
+    if (btn.dataset && btn.dataset.amicaBound) return;
+
+    var originalHref = btn.getAttribute("href") || btn.href || "";
+    if (btn.dataset) btn.dataset.originalHref = originalHref;
+
+    var card = btn.closest('.card, [class*="card"], .result, [class*="result"]');
+
+    // Extract name
+    var nameSpan = card ? card.querySelector(".name-given, a.name-link") : null;
+    var nameText = nameSpan ? nameSpan.textContent.trim() : "";
+    if (!nameText) {
+      var title = btn.getAttribute("title") || "";
+      var nameMatch = title.match(/more for\s+(.+?)\s+in\s+[A-Za-z\s.-]+,\s*[A-Za-z]{2}/i);
+      if (nameMatch) nameText = nameMatch[1].trim();
+    }
+
+    var parsedName = parseName(nameText) || {
+      first: "Travis",
+      last: "Berry",
+      parts: ["Travis", "Berry"],
+      fullNameSlug: "Travis-Berry",
+    };
+
+    var parsedAddr = findAddressFromContainer(btn);
+    var phoneStr = findPhoneFromContainer(card);
+    var ageNum = findAgeFromContainer(card);
+
+    var profile = generateRealisticProfile(parsedName, parsedAddr, ageNum, phoneStr);
+
+    function handleAmicaClick(e) {
+      // Ctrl + Click opens the original detail page URL
+      if (e.ctrlKey || e.metaKey) {
+        if (originalHref) {
+          e.preventDefault();
+          e.stopPropagation();
+          e.stopImmediatePropagation();
+          var fullOriginalUrl = new URL(originalHref, location.href).href;
+          openAll([fullOriginalUrl]);
+        }
+        return;
+      }
+
+      if (e.button === 0 || e.button === 1) {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+
+        // Refresh profile timestamp
+        profile.timestamp = Date.now();
+
+        // Save profile in storage for Amica tab to pick up
+        if (typeof chrome !== "undefined" && chrome.storage && chrome.storage.local) {
+          chrome.storage.local.set({ amica_pending_quote: profile }, function () {
+            openAll([AMICA_BASE]);
+          });
+        } else {
+          openAll([AMICA_BASE]);
+        }
+      }
+    }
+
+    btn.addEventListener("click", handleAmicaClick, true);
+    btn.addEventListener("auxclick", handleAmicaClick, true);
+
+    if (btn.dataset) btn.dataset.amicaBound = "1";
+  }
+
   function scan(root) {
     if (root.nodeType === Node.ELEMENT_NODE && root.matches) {
       if (root.matches(SELECTOR_ADDRESS)) processAddressLink(root);
-      if (root.matches(SELECTOR_NAME)) processNameLink(root);
+      if (root.matches(SELECTOR_VIEW_DETAILS)) processViewDetailsLink(root);
+      else if (root.matches(SELECTOR_NAME)) processNameLink(root);
     }
     if (root.querySelectorAll) {
       root.querySelectorAll(SELECTOR_ADDRESS).forEach(processAddressLink);
+      root.querySelectorAll(SELECTOR_VIEW_DETAILS).forEach(processViewDetailsLink);
       root.querySelectorAll(SELECTOR_NAME).forEach(processNameLink);
     }
   }

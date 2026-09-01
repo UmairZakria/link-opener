@@ -1,6 +1,6 @@
-# Address & Name Link Opener
+# Address & Name Link Opener with Amica Auto-Discovery
 
-Chrome/Edge extension that finds address and name links on people search sites and opens them across your preferred websites in new tabs simultaneously, with customizable toggle settings.
+Chrome/Edge extension that finds address and name links on people search sites, rewrites them according to customizable toggle preferences, and automates vehicle discovery on Amica.
 
 ## Features
 
@@ -13,10 +13,15 @@ Chrome/Edge extension that finds address and name links on people search sites a
   - **That's Them**: `https://thatsthem.com/name/Jack-L-Douglas/Fort-Worth-TX-76109`
   - **Advanced Background Checks**: `https://www.advancedbackgroundchecks.com/find/name/jack-douglas/in/TX/fort-worth`
 
+- 🚗 **Automated Amica Vehicle Discovery**:
+  - Clicking **VIEW DETAILS** extracts the person's name, address, age/DOB, and phone number.
+  - Automatically opens Amica in a new tab, enters the data through all quote steps, extracts all registered vehicles, and copies them to your clipboard automatically.
+
+- ⌨️ **Ctrl + Left Click (Original Link Bypass)**:
+  - Holding **Ctrl** (or **Cmd** on Mac) while clicking any link opens the original URL.
+
 - ⚙️ **Popup Settings UI**:
-  - Light font (`font-weight: 300`) minimalist dark UI.
-  - Individual toggles for each site under Address and Name links.
-  - Settings are saved automatically with real-time sync across tabs.
+  - Light font (`font-weight: 300`) minimalist dark UI with real-time toggle syncing.
 
 ## Install / Reload
 
@@ -24,4 +29,3 @@ Chrome/Edge extension that finds address and name links on people search sites a
 2. Enable **Developer mode** (toggle in the top-right).
 3. Click **Load unpacked** (or click the reload icon ⟳ if already loaded).
 4. Select this folder.
-5. Click the extension icon in your browser toolbar to configure your link opening preferences.

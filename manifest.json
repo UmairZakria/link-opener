@@ -2,10 +2,11 @@
   "manifest_version": 3,
   "name": "Address & Name Link Opener",
   "version": "1.0.0",
-  "description": "Rewrites address and name links to open in That's Them, Unmask, and AdvancedBackgroundChecks in new tabs.",
+  "description": "Rewrites address and name links to open in That's Them, Unmask, and AdvancedBackgroundChecks, with automated Amica vehicle discovery.",
   "permissions": [
     "storage",
-    "tabs"
+    "tabs",
+    "clipboardWrite"
   ],
   "action": {
     "default_popup": "popup.html",
@@ -18,6 +19,11 @@
     {
       "matches": ["<all_urls>"],
       "js": ["content.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://*.amica.com/*", "https://amica.com/*"],
+      "js": ["amica_automation.js"],
       "run_at": "document_idle"
     }
   ]
