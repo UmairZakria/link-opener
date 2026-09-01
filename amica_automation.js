@@ -204,7 +204,7 @@
       '  <button id="amica-banner-close" style="background:none; border:none; color:#94a3b8; font-size:16px; cursor:pointer;">✕</button>',
       "</div>",
       '<p style="font-size:11px; color:#94a3b8; margin-bottom:10px;">For: <strong>' +
-        (profile.fullName || "Target") +
+        (profile.fullName || (profile.name ? profile.name.first + " " + profile.name.last : "Customer")) +
         "</strong> • " +
         (profile.address ? profile.address.city + ", " + profile.address.state : "") +
         "</p>",
@@ -315,6 +315,7 @@
       );
       var firstNameInput = document.querySelector('input[name="FirstName"]');
       var lastNameInput = document.querySelector('input[name="LastName"]');
+      var middleInput = document.querySelector('input[name="MiddleInitial"]');
       var dobInput = document.getElementById("DOB") || document.querySelector('input[name="DOB"]');
       var emailInput = document.getElementById("Email") || document.querySelector('input[name="Email"]');
       var phoneInput = document.querySelector('input[name="Cell Phone Number"]');
@@ -325,27 +326,30 @@
           setSelectValue(howHearSelect, "OnlineMarketingSearchLeads");
         }
 
+        var fName = (profile.name && profile.name.first) ? profile.name.first : "Lloyd";
+        var lName = (profile.name && profile.name.last) ? profile.name.last : "White";
+        var mInitial = (profile.name && profile.name.middle) ? profile.name.middle.charAt(0) : "";
+
         if (firstNameInput && !firstNameInput.value) {
-          fillAndTypeInput(firstNameInput, profile.name.first || "Customer");
+          fillAndTypeInput(firstNameInput, fName);
         }
 
-        var middleInput = document.querySelector('input[name="MiddleInitial"]');
-        if (middleInput && profile.name.middle && !middleInput.value) {
-          fillAndTypeInput(middleInput, profile.name.middle.charAt(0));
+        if (middleInput && mInitial && !middleInput.value) {
+          fillAndTypeInput(middleInput, mInitial);
         }
 
         if (lastNameInput && !lastNameInput.value) {
-          fillAndTypeInput(lastNameInput, profile.name.last || "User");
+          fillAndTypeInput(lastNameInput, lName);
         }
 
-        if (profile.name.suffix) {
+        if (profile.name && profile.name.suffix) {
           var suffixSelect = document.querySelector('select[name="Suffix"]');
           if (suffixSelect && !suffixSelect.value) setSelectValue(suffixSelect, profile.name.suffix.toLowerCase());
         }
 
-        if (dobInput && !dobInput.value) fillAndTypeInput(dobInput, profile.dob || "05/15/1972");
+        if (dobInput && !dobInput.value) fillAndTypeInput(dobInput, profile.dob || "08/15/1941");
         if (emailInput && !emailInput.value) fillAndTypeInput(emailInput, profile.email || "customer782@gmail.com");
-        if (phoneInput && !phoneInput.value) fillAndTypeInput(phoneInput, profile.phone || "555-019-2834");
+        if (phoneInput && !phoneInput.value) fillAndTypeInput(phoneInput, profile.phone || "817-294-4402");
 
         var tcpaCheckbox = document.getElementById("quoting-tcpa-opt-in") ||
           document.querySelector('input[name="quoting-tcpa-opt-in"]');
@@ -389,6 +393,8 @@
         document.querySelector('button[data-id="GetaQuote.aStartQuote"], button[type="submit"]');
       var streetInput = document.getElementById("addressLineOneInputQuoting") ||
         document.querySelector('input[name="addressLineOne"]');
+      var streetTwoInput = document.getElementById("addressLineTwoInputQuoting") ||
+        document.querySelector('input[name="addressLineTwo"], input[name="aptSuite"]');
       var cityInput = document.getElementById("cityInputQuoting") ||
         document.querySelector('input[name="city"]');
       var stateInput = document.getElementById("stateInputQuoting") ||
@@ -399,13 +405,19 @@
       if (streetInput && cityInput && streetInput.offsetParent !== null) {
         var cleanStreet = (profile.address && profile.address.street)
           ? profile.address.street.replace(/[,]/g, "").trim()
-          : "7603 E 8th Pl";
-        var cleanCity = (profile.address && profile.address.city) ? profile.address.city.trim() : "Denver";
-        var cleanState = (profile.address && profile.address.state) ? profile.address.state.trim() : "CO";
-        var cleanZip = (profile.address && profile.address.zip) ? profile.address.zip.trim() : "80230";
+          : "3101 Highlawn Ter";
+        var cleanUnit = (profile.address && profile.address.unit)
+          ? profile.address.unit.replace(/[,]/g, "").trim()
+          : "";
+        var cleanCity = (profile.address && profile.address.city) ? profile.address.city.trim() : "Fort Worth";
+        var cleanState = (profile.address && profile.address.state) ? profile.address.state.trim() : "TX";
+        var cleanZip = (profile.address && profile.address.zip) ? profile.address.zip.trim() : "76133";
 
         if (!streetInput.value || streetInput.classList.contains("invalid")) {
           fillAndTypeInput(streetInput, cleanStreet);
+          if (streetTwoInput && cleanUnit) {
+            fillAndTypeInput(streetTwoInput, cleanUnit);
+          }
           fillAndTypeInput(cityInput, cleanCity);
           fillAndTypeInput(stateInput, cleanState);
           fillAndTypeInput(zipAddrInput, cleanZip);
@@ -445,8 +457,9 @@
       // ==========================================
       var initZip = document.getElementById("zipcodeInitInputQuoting");
       if (initZip && initZip.offsetParent !== null) {
+        var initialZip = (profile.address && profile.address.zip) ? profile.address.zip : "76133";
         if (!initZip.value) {
-          fillAndTypeInput(initZip, profile.address.zip);
+          fillAndTypeInput(initZip, initialZip);
         }
         var getQuoteBtn = document.querySelector(
           'button[data-id="GetaQuote.CheckAvailablity"], button.init-get-products-button, .get-products-button'

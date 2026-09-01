@@ -2,7 +2,7 @@
 
 Chrome/Edge extension that finds address and name links on people search sites, rewrites them according to customizable toggle preferences, and automates vehicle discovery on Amica.
 
-## Features
+## Supported Data Sources & Triggers
 
 - 📍 **Address Search**:
   - **Unmask**: `https://unmask.com/address/237-Reeves-Ranch-Rd--Victoria-TX-77905/`
@@ -13,12 +13,18 @@ Chrome/Edge extension that finds address and name links on people search sites, 
   - **That's Them**: `https://thatsthem.com/name/Jack-L-Douglas/Fort-Worth-TX-76109`
   - **Advanced Background Checks**: `https://www.advancedbackgroundchecks.com/find/name/jack-douglas/in/TX/fort-worth`
 
-- 🚗 **Automated Amica Vehicle Discovery**:
-  - Clicking **VIEW DETAILS** extracts the person's name, address, age/DOB, and phone number.
-  - Automatically opens Amica in a new tab, enters the data through all quote steps, extracts all registered vehicles, and copies them to your clipboard automatically.
+- 🚗 **Amica Auto Vehicle Discovery Triggers**:
+  1. **Search Results Cards**: Clicking **"VIEW DETAILS"**
+  2. **Person Details Profiles**: Clicking **"Get Unlimited Background Details"** or **"View Full Background Report"**
+  - Automatically extracts:
+    - **Name**: e.g., `Esteban Pecina`
+    - **DOB & Age**: Parses exact birth date (e.g., `Born July 1972` $\rightarrow$ `07/15/1972`) or computes from age
+    - **Address**: Extracted from Most Recent Address (e.g., `305 Elda Dr, Brownsville, TX 78521`)
+    - **Phone**: Extracted from Primary Phone (e.g., `(956) 504-2505` $\rightarrow$ `956-504-2505`)
+  - Automatically navigates Amica, discovers all vehicles, and copies them to your clipboard.
 
 - ⌨️ **Ctrl + Left Click (Original Link Bypass)**:
-  - Holding **Ctrl** (or **Cmd** on Mac) while clicking any link opens the original URL.
+  - Holding **Ctrl** (or **Cmd** on Mac) while clicking any button or link opens the original URL.
 
 - ⚙️ **Popup Settings UI**:
   - Light font (`font-weight: 300`) minimalist dark UI with real-time toggle syncing.
