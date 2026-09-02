@@ -4,18 +4,14 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Link Opener Settings</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
   <div class="container">
     <header class="header">
-      <div class="logo-icon">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-          <polyline points="15 3 21 3 21 9"></polyline>
-          <line x1="10" y1="14" x2="21" y2="3"></line>
-        </svg>
-      </div>
       <div class="header-text">
         <h1>Link Opener</h1>
         <p class="subtitle">Tab Opening Preferences</p>
@@ -27,10 +23,6 @@
       <section class="section">
         <div class="section-header">
           <div class="section-title">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-              <circle cx="12" cy="10" r="3"></circle>
-            </svg>
             <h2>Address Links</h2>
           </div>
           <span class="badge" id="addr-count">3 active</span>
@@ -76,10 +68,6 @@
       <section class="section">
         <div class="section-header">
           <div class="section-title">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-              <circle cx="12" cy="7" r="4"></circle>
-            </svg>
             <h2>Name Links</h2>
           </div>
           <span class="badge" id="name-count">2 active</span>
@@ -111,8 +99,12 @@
       </section>
     </main>
 
-   
+    <footer class="footer">
+      <button class="btn btn-secondary" id="btn-enable-all">Enable All</button>
+      <button class="btn btn-primary" id="btn-save">Save & Close</button>
+    </footer>
   </div>
+
   <script src="popup.js"></script>
 </body>
 </html>

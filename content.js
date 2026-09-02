@@ -9,6 +9,7 @@
   var ADVANCED_NAME_BASE = "https://www.advancedbackgroundchecks.com/find/name/";
 
   var AMICA_BASE = "https://www.amica.com/";
+  var MERCURY_BASE = "https://www.mercuryinsurance.com/";
 
   var DEFAULT_SETTINGS = {
     openAddressUnmask: true,
@@ -19,6 +20,30 @@
   };
 
   var currentSettings = Object.assign({}, DEFAULT_SETTINGS);
+
+  function ensurePoppinsFont() {
+    if (document.getElementById("link-opener-poppins-font")) return;
+    try {
+      var preconnect1 = document.createElement("link");
+      preconnect1.rel = "preconnect";
+      preconnect1.href = "https://fonts.googleapis.com";
+
+      var preconnect2 = document.createElement("link");
+      preconnect2.rel = "preconnect";
+      preconnect2.href = "https://fonts.gstatic.com";
+      preconnect2.crossOrigin = "anonymous";
+
+      var fontLink = document.createElement("link");
+      fontLink.id = "link-opener-poppins-font";
+      fontLink.rel = "stylesheet";
+      fontLink.href =
+        "https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap";
+
+      document.head.appendChild(preconnect1);
+      document.head.appendChild(preconnect2);
+      document.head.appendChild(fontLink);
+    } catch (e) {}
+  }
 
   function applySettings(settings) {
     if (!settings) return;
@@ -162,7 +187,6 @@
       .join(" ");
   }
 
-  // "900 County Road 310" -> "900-310-County-Rd"
   function buildStreetSlug(street) {
     street = street.replace(/\s+/g, " ").trim();
     var m = street.match(/^(\d+)\s+(.+?)\s+(\d+)\s*$/);
@@ -172,9 +196,6 @@
     return slugify(abbreviateAndTitle(street));
   }
 
-  // Robust parser that properly handles Apt/Unit/Suite:
-  // "3101 Highlawn Ter, UNIT O, Fort Worth, TX 76133 7231"
-  // "305 Elda Dr, Brownsville, TX 78521"
   function parseAddress(text) {
     if (!text) return null;
     var s = text
@@ -184,7 +205,6 @@
 
     s = s.replace(/.*?associated with\s+/i, "").trim();
 
-    // 1. Match State and 5-digit Zip at the end
     var stateZipMatch = s.match(/,\s*([A-Za-z]{2})\s+(\d{5})(?:[-\s]*\d{4})?\s*$/);
     if (stateZipMatch) {
       var state = stateZipMatch[1].toUpperCase();
@@ -218,7 +238,6 @@
       }
     }
 
-    // 2. Fallback regex
     var m = s.match(
       /(?:^|.*?)([0-9A-Za-z\s.#-]+?),\s*([A-Za-z\s.-]+?),\s*([A-Za-z]{2})\s+(\d{5})(?:[-\s]*\d{4})?/
     );
@@ -233,7 +252,6 @@
       };
     }
 
-    // 3. City, State Zip only
     var mCity = s.match(
       /(?:^|.*?\bin\s+)?([A-Za-z\s.-]+?),\s*([A-Za-z]{2})\s+(\d{5})(?:[-\s]*\d{4})?/i
     );
@@ -287,25 +305,21 @@
 
   function extractNameFromContainer(card, btn) {
     if (card) {
-      // 1. Direct name-given inside card
       var nameGiven = card.querySelector(".name-given");
       if (nameGiven && nameGiven.textContent.trim()) {
         return nameGiven.textContent.trim();
       }
 
-      // 2. Name link inside card
       var nameLink = card.querySelector("a.name-link");
       if (nameLink && nameLink.textContent.trim()) {
         return nameLink.textContent.trim();
       }
 
-      // 3. Details page heading in #personDetails
       var personH1 = card.querySelector("#personDetails h1");
       if (personH1 && personH1.textContent.trim()) {
         return personH1.textContent.trim();
       }
 
-      // 4. Key Facts definition list
       var dts = card.querySelectorAll("dt");
       for (var i = 0; i < dts.length; i++) {
         if (dts[i].textContent.trim().toLowerCase().includes("full name")) {
@@ -314,7 +328,6 @@
         }
       }
 
-      // 5. Card header h2
       var cardH2 = card.querySelector(".card-header h2, h2");
       if (cardH2) {
         var clone = cardH2.cloneNode(true);
@@ -324,7 +337,6 @@
       }
     }
 
-    // 6. Button title match
     if (btn) {
       var title = btn.getAttribute("title") || "";
       var nameMatch = title.match(/more for\s+(.+?)\s+in\s+[A-Za-z\s.-]+,\s*[A-Za-z]{2}/i) ||
@@ -338,7 +350,6 @@
       }
     }
 
-    // 7. Global #personDetails h1
     var globalPersonH1 = document.querySelector("#personDetails h1");
     if (globalPersonH1 && globalPersonH1.textContent.trim()) {
       return globalPersonH1.textContent.trim();
@@ -348,7 +359,6 @@
   }
 
   function findAddressFromContainer(el) {
-    // 1. Check for Modern Details Page "#toc-current-address" section
     var currentAddressHeader = document.getElementById("toc-current-address");
     if (currentAddressHeader) {
       var sec = currentAddressHeader.closest("section");
@@ -377,7 +387,6 @@
       }
     }
 
-    // 2. Ascend parent containers
     var curr = el.parentElement;
     while (curr && curr !== document.body) {
       if (
@@ -401,7 +410,6 @@
 
           var href = addrEl.getAttribute("data-original-href") || addrEl.getAttribute("href") || "";
 
-          // e.g. /find/address/3101-highlawn-ter/fort-worth-TX-76133
           var findMatch = href.match(/\/address\/([^\/]+)\/([A-Za-z_-]+)-([A-Za-z]{2})-(\d{5})/i);
           if (findMatch) {
             return {
@@ -414,7 +422,6 @@
             };
           }
 
-          // e.g. /address/3101-highlawn-ter/fort-worth/tx
           var origMatch = href.match(/\/address\/([^\/]+)\/([^\/]+)\/([a-zA-Z]{2})/i);
           if (origMatch) {
             var rawZip = (text.match(/\b\d{5}\b/) || title.match(/\b\d{5}\b/) || [])[0] || "76133";
@@ -428,7 +435,6 @@
             };
           }
 
-          // e.g. unmask URL: https://unmask.com/address/3101-Highlawn-Ter--Fort_Worth-TX-76133/
           var unmaskMatch = href.match(/address\/([A-Za-z0-9_-]+)--([A-Za-z0-9_]+)-([A-Za-z]{2})-(\d{5})/);
           if (unmaskMatch) {
             return {
@@ -485,7 +491,6 @@
 
     var fullText = card.textContent || "";
 
-    // 1. Check for explicit "Born Month Year" (e.g. Born August 1941)
     var bornMatch = fullText.match(/Born\s+([A-Za-z]+)\s+(\d{4})/i) ||
       fullText.match(/Birth Date[\s\S]*?<dd[^>]*>([A-Za-z]+)\s+(\d{4})/i) ||
       fullText.match(/Birth Date\s+([A-Za-z]+)\s+(\d{4})/i);
@@ -500,7 +505,6 @@
       result.age = currentYear - parseInt(yearNum, 10);
     }
 
-    // 2. Check for Age element / text (e.g. Age 85, 85 years old)
     var ageEl = card.querySelector(".age, [class*='age']");
     if (ageEl) {
       var num = parseInt(ageEl.textContent.trim(), 10);
@@ -664,6 +668,120 @@
     });
   }
 
+  function showChoiceModal(profile, originalHref) {
+    ensurePoppinsFont();
+
+    var existing = document.getElementById("vehicle-discovery-choice-modal");
+    if (existing) existing.remove();
+
+    var backdrop = document.createElement("div");
+    backdrop.id = "vehicle-discovery-choice-modal";
+    backdrop.style.cssText = [
+      "position: fixed",
+      "top: 0",
+      "left: 0",
+      "width: 100vw",
+      "height: 100vh",
+      "background: rgba(15, 23, 42, 0.72)",
+      "backdrop-filter: blur(8px)",
+      "z-index: 99999999",
+      "display: flex",
+      "align-items: center",
+      "justify-content: center",
+      "font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important",
+      "font-weight: 300",
+    ].join(";");
+
+    var modal = document.createElement("div");
+    modal.style.cssText = [
+      "background: #0f172a",
+      "color: #f1f5f9",
+      "border-radius: 20px",
+      "padding: 24px 28px",
+      "width: 360px",
+      "box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.1)",
+      "font-family: 'Poppins', sans-serif !important",
+    ].join(";");
+
+    var fullName = profile.fullName || (profile.name ? profile.name.first + " " + profile.name.last : "Customer");
+    var loc = profile.address ? profile.address.city + ", " + profile.address.state : "";
+
+    modal.innerHTML = [
+      '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px;">',
+      '  <div>',
+      '    <h3 style="margin:0; font-size:15px; font-weight:600; color:#f8fafc; font-family:Poppins, sans-serif;">Select Provider</h3>',
+      '    <p style="margin:2px 0 0 0; font-size:11.5px; color:#94a3b8; font-weight:300; font-family:Poppins, sans-serif;">' + fullName + (loc ? " • " + loc : "") + '</p>',
+      '  </div>',
+      '  <button id="choice-modal-close" style="background:none; border:none; color:#94a3b8; font-size:14px; font-family:Poppins, sans-serif; cursor:pointer; padding:4px 6px;">Close</button>',
+      '</div>',
+      '<div style="display:flex; flex-direction:column; gap:10px;">',
+      '  <button id="choice-btn-amica" style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); color:#f8fafc; border-radius:12px; padding:12px 16px; cursor:pointer; text-align:left; transition:all 0.15s ease; font-family:Poppins, sans-serif;">',
+      '    <div style="font-size:14px; font-weight:500; color:#38bdf8;">Amica</div>',
+      '    <div style="font-size:11.5px; color:#94a3b8; font-weight:300;">Automatic vehicle discovery</div>',
+      '  </button>',
+      '  <button id="choice-btn-mercury" style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); color:#f8fafc; border-radius:12px; padding:12px 16px; cursor:pointer; text-align:left; transition:all 0.15s ease; font-family:Poppins, sans-serif;">',
+      '    <div style="font-size:14px; font-weight:500; color:#fb923c;">Mercury</div>',
+      '    <div style="font-size:11.5px; color:#94a3b8; font-weight:300;">Fast quote with Amica fallback</div>',
+      '  </button>',
+      '</div>',
+    ].join("");
+
+    backdrop.appendChild(modal);
+    document.body.appendChild(backdrop);
+
+    var amicaBtn = document.getElementById("choice-btn-amica");
+    var mercuryBtn = document.getElementById("choice-btn-mercury");
+    var closeBtn = document.getElementById("choice-modal-close");
+
+    [amicaBtn, mercuryBtn].forEach(function (btn) {
+      btn.addEventListener("mouseenter", function () {
+        btn.style.background = "rgba(255,255,255,0.12)";
+        btn.style.borderColor = "rgba(255,255,255,0.25)";
+        btn.style.transform = "translateY(-1px)";
+      });
+      btn.addEventListener("mouseleave", function () {
+        btn.style.background = "rgba(255,255,255,0.06)";
+        btn.style.borderColor = "rgba(255,255,255,0.12)";
+        btn.style.transform = "translateY(0)";
+      });
+    });
+
+    closeBtn.addEventListener("click", function () {
+      backdrop.remove();
+    });
+
+    backdrop.addEventListener("click", function (e) {
+      if (e.target === backdrop) backdrop.remove();
+    });
+
+    amicaBtn.addEventListener("click", function () {
+      backdrop.remove();
+      profile.timestamp = Date.now();
+      if (typeof chrome !== "undefined" && chrome.storage && chrome.storage.local) {
+        chrome.storage.local.set({ amica_pending_quote: profile }, function () {
+          openAll([AMICA_BASE]);
+        });
+      } else {
+        openAll([AMICA_BASE]);
+      }
+    });
+
+    mercuryBtn.addEventListener("click", function () {
+      backdrop.remove();
+      profile.timestamp = Date.now();
+      if (typeof chrome !== "undefined" && chrome.storage && chrome.storage.local) {
+        chrome.storage.local.set(
+          { mercury_pending_quote: profile },
+          function () {
+            openAll([MERCURY_BASE]);
+          }
+        );
+      } else {
+        openAll([MERCURY_BASE]);
+      }
+    });
+  }
+
   function processAddressLink(a) {
     if (a.dataset && a.dataset.adsConverted) return;
 
@@ -800,7 +918,7 @@
 
     var profile = generateRealisticProfile(parsedName, parsedAddr, ageAndDob, phoneStr);
 
-    function handleAmicaClick(e) {
+    function handleButtonClick(e) {
       if (e.ctrlKey || e.metaKey) {
         if (originalHref) {
           e.preventDefault();
@@ -817,20 +935,12 @@
         e.stopPropagation();
         e.stopImmediatePropagation();
 
-        profile.timestamp = Date.now();
-
-        if (typeof chrome !== "undefined" && chrome.storage && chrome.storage.local) {
-          chrome.storage.local.set({ amica_pending_quote: profile }, function () {
-            openAll([AMICA_BASE]);
-          });
-        } else {
-          openAll([AMICA_BASE]);
-        }
+        showChoiceModal(profile, originalHref);
       }
     }
 
-    btn.addEventListener("click", handleAmicaClick, true);
-    btn.addEventListener("auxclick", handleAmicaClick, true);
+    btn.addEventListener("click", handleButtonClick, true);
+    btn.addEventListener("auxclick", handleButtonClick, true);
 
     if (btn.dataset) btn.dataset.amicaBound = "1";
   }

@@ -1,6 +1,30 @@
 (function () {
   "use strict";
 
+  function ensurePoppinsFont() {
+    if (document.getElementById("amica-automation-poppins-font")) return;
+    try {
+      var preconnect1 = document.createElement("link");
+      preconnect1.rel = "preconnect";
+      preconnect1.href = "https://fonts.googleapis.com";
+
+      var preconnect2 = document.createElement("link");
+      preconnect2.rel = "preconnect";
+      preconnect2.href = "https://fonts.gstatic.com";
+      preconnect2.crossOrigin = "anonymous";
+
+      var fontLink = document.createElement("link");
+      fontLink.id = "amica-automation-poppins-font";
+      fontLink.rel = "stylesheet";
+      fontLink.href =
+        "https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap";
+
+      document.head.appendChild(preconnect1);
+      document.head.appendChild(preconnect2);
+      document.head.appendChild(fontLink);
+    } catch (e) {}
+  }
+
   // Check for pending Amica quote profile
   function getPendingQuote(callback) {
     if (typeof chrome !== "undefined" && chrome.storage && chrome.storage.local) {
@@ -162,6 +186,8 @@
 
   // Floating UI Banner to show vehicles
   function showDiscoveredBanner(vehicles, profile) {
+    ensurePoppinsFont();
+
     var existing = document.getElementById("amica-discovered-vehicles-banner");
     if (existing) existing.remove();
 
@@ -177,7 +203,7 @@
       "padding: 20px 24px",
       "border-radius: 16px",
       "box-shadow: 0 20px 40px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.1)",
-      "font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+      "font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important",
       "font-weight: 300",
       "min-width: 320px",
       "max-width: 420px",
@@ -186,31 +212,28 @@
     var listHtml = vehicles
       .map(function (v) {
         return (
-          '<li style="padding: 6px 10px; margin-bottom: 4px; background: rgba(255,255,255,0.06); border-radius: 8px; font-size: 13.5px; font-weight: 400; color: #38bdf8; display: flex; align-items: center; gap: 8px;">' +
-          '🚗 <span>' +
+          '<li style="padding: 8px 12px; margin-bottom: 4px; background: rgba(255,255,255,0.06); border-radius: 8px; font-size: 13px; font-weight: 400; color: #38bdf8; font-family:Poppins, sans-serif;">' +
           v +
-          "</span></li>"
+          "</li>"
         );
       })
       .join("");
 
     banner.innerHTML = [
       '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">',
-      '  <div style="font-size:14px; font-weight:500; color:#22c55e; display:flex; align-items:center; gap:6px;">',
-      '    <span style="font-size:16px;">✓</span> Vehicles Discovered (' +
-        vehicles.length +
-        ")",
+      '  <div style="font-size:13.5px; font-weight:500; color:#22c55e; font-family:Poppins, sans-serif;">',
+      "    Vehicles Discovered (" + vehicles.length + ")",
       "  </div>",
-      '  <button id="amica-banner-close" style="background:none; border:none; color:#94a3b8; font-size:16px; cursor:pointer;">✕</button>',
+      '  <button id="amica-banner-close" style="background:none; border:none; color:#94a3b8; font-size:13px; font-family:Poppins, sans-serif; cursor:pointer; padding:2px 4px;">Close</button>',
       "</div>",
-      '<p style="font-size:11px; color:#94a3b8; margin-bottom:10px;">For: <strong>' +
+      '<p style="font-size:11px; color:#94a3b8; margin-bottom:10px; font-family:Poppins, sans-serif;">For: <strong>' +
         (profile.fullName || (profile.name ? profile.name.first + " " + profile.name.last : "Customer")) +
         "</strong> • " +
         (profile.address ? profile.address.city + ", " + profile.address.state : "") +
         "</p>",
       '<ul style="list-style:none; padding:0; margin:0 0 12px 0;">' + listHtml + "</ul>",
-      '<div style="font-size:11.5px; color:#22c55e; background:rgba(34, 197, 94, 0.1); border:1px solid rgba(34, 197, 94, 0.2); padding:6px 10px; border-radius:8px; text-align:center;">',
-      "  📋 Copied to Clipboard Automatically!",
+      '<div style="font-size:11.5px; color:#22c55e; background:rgba(34, 197, 94, 0.1); border:1px solid rgba(34, 197, 94, 0.2); padding:6px 10px; border-radius:8px; text-align:center; font-family:Poppins, sans-serif;">',
+      "  Copied to Clipboard",
       "</div>",
     ].join("");
 

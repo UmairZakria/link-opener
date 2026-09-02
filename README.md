@@ -1,27 +1,23 @@
-# Address & Name Link Opener with Amica Auto-Discovery
+# Address & Name Link Opener with Amica & Mercury Auto-Discovery
 
-Chrome/Edge extension that finds address and name links on people search sites, rewrites them according to customizable toggle preferences, and automates vehicle discovery on Amica.
+Chrome/Edge extension that finds address and name links on people search sites, rewrites them according to customizable toggle preferences, and automates vehicle discovery on **Amica** and **Mercury Insurance** (with auto-fallback).
 
-## Supported Data Sources & Triggers
+## Supported Data Sources & Features
 
 - 📍 **Address Search**:
-  - **Unmask**: `https://unmask.com/address/237-Reeves-Ranch-Rd--Victoria-TX-77905/`
-  - **That's Them**: `https://thatsthem.com/address/237-Reeves-Ranch-Rd-Victoria-TX-77905`
-  - **Advanced Background Checks**: `https://www.advancedbackgroundchecks.com/find/address/237-reeves-ranch-rd/victoria-TX-77905`
+  - **Unmask**: `https://unmask.com/address/3101-Highlawn-Ter--Fort_Worth-TX-76133/`
+  - **That's Them**: `https://thatsthem.com/address/3101-Highlawn-Ter-Fort-Worth-TX-76133`
+  - **Advanced Background Checks**: `https://www.advancedbackgroundchecks.com/find/address/3101-highlawn-ter/fort-worth-TX-76133`
 
 - 👤 **Name Search**:
-  - **That's Them**: `https://thatsthem.com/name/Jack-L-Douglas/Fort-Worth-TX-76109`
-  - **Advanced Background Checks**: `https://www.advancedbackgroundchecks.com/find/name/jack-douglas/in/TX/fort-worth`
+  - **That's Them**: `https://thatsthem.com/name/Lloyd-D-White/Fort-Worth-TX-76133`
+  - **Advanced Background Checks**: `https://www.advancedbackgroundchecks.com/find/name/lloyd-white/in/TX/fort-worth`
 
-- 🚗 **Amica Auto Vehicle Discovery Triggers**:
-  1. **Search Results Cards**: Clicking **"VIEW DETAILS"**
-  2. **Person Details Profiles**: Clicking **"Get Unlimited Background Details"** or **"View Full Background Report"**
-  - Automatically extracts:
-    - **Name**: e.g., `Esteban Pecina`
-    - **DOB & Age**: Parses exact birth date (e.g., `Born July 1972` $\rightarrow$ `07/15/1972`) or computes from age
-    - **Address**: Extracted from Most Recent Address (e.g., `305 Elda Dr, Brownsville, TX 78521`)
-    - **Phone**: Extracted from Primary Phone (e.g., `(956) 504-2505` $\rightarrow$ `956-504-2505`)
-  - Automatically navigates Amica, discovers all vehicles, and copies them to your clipboard.
+- 🚗 **Dual Vehicle Discovery Providers**:
+  - Clicking **"VIEW DETAILS"** or **"Get Unlimited Background Details"** displays an interactive choice modal:
+    1. **Amica Auto (🚗)**: Runs the Amica vehicle discovery automation.
+    2. **Mercury Insurance (⚡)**: Runs the Mercury quote flow. If Mercury fails to find vehicles or times out, it **automatically falls back to Amica** and searches there!
+  - Discovered vehicles are automatically copied to your clipboard and shown in a notification banner.
 
 - ⌨️ **Ctrl + Left Click (Original Link Bypass)**:
   - Holding **Ctrl** (or **Cmd** on Mac) while clicking any button or link opens the original URL.
