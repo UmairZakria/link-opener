@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Address & Name Link Opener",
   "version": "1.0.0",
-  "description": "Rewrites address and name links to open in That's Them, Unmask, and AdvancedBackgroundChecks, with automated Amica & Mercury vehicle discovery.",
+  "description": "Opens address and name links across supported search sites with automated vehicle discovery.",
   "permissions": [
     "storage",
     "tabs",
