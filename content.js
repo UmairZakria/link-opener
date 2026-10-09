@@ -20,6 +20,7 @@
   };
 
   var currentSettings = Object.assign({}, DEFAULT_SETTINGS);
+  var activeDobLookups = {};
 
   function ensurePoppinsFont() {
     if (document.getElementById("link-opener-poppins-font")) return;
@@ -67,8 +68,148 @@
       if (message && message.type === "SETTINGS_UPDATED" && message.settings) {
         applySettings(message.settings);
         if (sendResponse) sendResponse({ ok: true });
+      } else if (message && message.action === "DOB_LOOKUP_EXACT_RESULT") {
+        var activeLookup = activeDobLookups[message.lookupId];
+        if (!activeLookup) return;
+        activeLookup.unmaskDone = true;
+        activeLookup.unmaskStatus = message.status;
+        activeLookup.unmaskDob = message.dob || "";
+        activeLookup.unmaskMessage = message.message || "";
+        updateDobLookupResult(activeLookup);
+        if (sendResponse) sendResponse({ ok: true });
+      } else if (message && message.action === "DOB_LOOKUP_PEOPLE_RESULT") {
+        var peopleLookup = activeDobLookups[message.lookupId];
+        if (!peopleLookup) return;
+        peopleLookup.peopleDone = true;
+        peopleLookup.peopleStatus = message.status;
+        peopleLookup.peopleDob = message.dob || "";
+        peopleLookup.peopleName = message.name || "";
+        peopleLookup.peopleMessage = message.message || "";
+        updateDobLookupResult(peopleLookup);
+        if (sendResponse) sendResponse({ ok: true });
+      } else if (message && message.action === "DOB_LOOKUP_CANCELLED") {
+        var cancelledLookup = activeDobLookups[message.lookupId];
+        if (!cancelledLookup) return;
+        if (message.source === "people") {
+          cancelledLookup.peopleDone = true;
+          cancelledLookup.peopleStatus = "cancelled";
+          cancelledLookup.peopleMessage = "Stopped after the exact DOB was confirmed by Unmask.";
+        } else if (message.source === "unmask") {
+          cancelledLookup.unmaskDone = true;
+          cancelledLookup.unmaskStatus = "cancelled";
+          cancelledLookup.unmaskMessage = "Stopped after the exact DOB was confirmed by the parallel people search.";
+        } else {
+          return;
+        }
+        updateDobLookupResult(cancelledLookup);
+        if (sendResponse) sendResponse({ ok: true });
+      } else if (message && message.action === "DOB_LOOKUP_PEOPLE_PROGRESS") {
+        var peopleProgressLookup = activeDobLookups[message.lookupId];
+        if (!peopleProgressLookup || peopleProgressLookup.matchFound) return;
+        setDobLookupStatus(
+          peopleProgressLookup,
+          "People · Scanning",
+          "searching",
+          message.message || "Scanning people-search result cards."
+        );
+        if (sendResponse) sendResponse({ ok: true });
+      } else if (message && message.action === "DOB_LOOKUP_EXACT_PROGRESS") {
+        var progressLookup = activeDobLookups[message.lookupId];
+        if (!progressLookup || progressLookup.matchFound) return;
+        var stageLabel = message.searchType === "address"
+          ? "Address"
+          : message.searchType === "phone"
+            ? "Phone"
+            : "Name";
+        var completedSearches = Math.max(0, Number(message.searchIndex) || 0) + 1;
+        var totalSearches = Math.max(completedSearches, Number(message.totalSearches) || completedSearches);
+        var stageIndex = Math.max(1, Number(message.stageIndex) || 1);
+        var stageTotal = Math.max(stageIndex, Number(message.stageTotal) || stageIndex);
+        progressLookup.progress.value = completedSearches / totalSearches;
+        progressLookup.progress.fill.style.width = Math.max(
+          8,
+          Math.round(progressLookup.progress.value * 100)
+        ) + "%";
+        setDobLookupStatus(
+          progressLookup,
+          stageLabel + " · " + stageIndex + "/" + stageTotal,
+          "searching",
+          "Searching " + stageLabel.toLowerCase() + " " + stageIndex + " of " + stageTotal
+        );
+        if (sendResponse) sendResponse({ ok: true });
       }
     });
+  }
+
+  function updateDobLookupResult(lookup) {
+    var matches = [];
+    if (lookup.unmaskStatus === "match") {
+      matches.push({ source: "Unmask", dob: lookup.unmaskDob, name: "" });
+    }
+    if (lookup.peopleStatus === "match") {
+      matches.push({ source: "People search", dob: lookup.peopleDob, name: lookup.peopleName });
+    }
+    if (matches.length) {
+      lookup.matchFound = true;
+      setDobLookupStatus(
+        lookup,
+        "Exact match · " + matches[0].dob,
+        "match",
+        matches.map(function (match) {
+          return match.source + ": " +
+            (match.name ? match.name + " · " : "") + match.dob;
+        }).join(" | ")
+      );
+      if (lookup.unmaskDone && lookup.peopleDone) {
+        delete activeDobLookups[lookup.lookupId];
+        lookup.button.disabled = false;
+        lookup.button.textContent = "Search";
+      }
+      return;
+    }
+
+    if (lookup.unmaskDone && lookup.peopleDone) {
+      delete activeDobLookups[lookup.lookupId];
+      lookup.button.disabled = false;
+      lookup.button.textContent = "Search";
+      var failed = lookup.unmaskStatus === "error" || lookup.peopleStatus === "error";
+      var details = [
+        lookup.unmaskMessage,
+        lookup.peopleMessage
+      ].filter(Boolean).join(" | ");
+      setDobLookupStatus(
+        lookup,
+        failed ? "Search incomplete" : "No exact match",
+        failed ? "error" : "no_match",
+        details || (failed ? "One or more searches could not complete." : "Neither source found the exact birth month and year.")
+      );
+      return;
+    }
+
+    if (lookup.unmaskDone && !lookup.peopleDone) {
+      setDobLookupStatus(lookup, "People · Searching", "searching", "Unmask is complete; the parallel people search is still running.");
+    }
+  }
+
+  function setDobLookupStatus(lookup, label, state, title) {
+    lookup.status.dataset.state = state;
+    lookup.label.textContent = label;
+    lookup.status.title = title || label;
+    lookup.indicator.hidden = state !== "searching";
+    lookup.progress.track.hidden = state !== "searching";
+    if (state === "match") {
+      lookup.status.style.color = "#166534";
+      lookup.status.style.background = "#f0fdf4";
+      lookup.status.style.borderColor = "#bbf7d0";
+    } else if (state === "error" || state === "no_match") {
+      lookup.status.style.color = state === "error" ? "#b91c1c" : "#92400e";
+      lookup.status.style.background = state === "error" ? "#fef2f2" : "#fffbeb";
+      lookup.status.style.borderColor = state === "error" ? "#fecaca" : "#fde68a";
+    } else {
+      lookup.status.style.color = "#1d4ed8";
+      lookup.status.style.background = "#eff6ff";
+      lookup.status.style.borderColor = "#bfdbfe";
+    }
   }
 
   // Listen for storage changes
@@ -945,7 +1086,317 @@
     if (btn.dataset) btn.dataset.amicaBound = "1";
   }
 
+  function parseBirthMonthYear(value) {
+    var match = String(value || "").trim().match(/^([A-Za-z]{3,9})\.?\s+(?:(?:\d{1,2})(?:st|nd|rd|th)?,?\s+)?(\d{4})$/i);
+    if (!match) return null;
+    var month = MONTH_NAMES[match[1].toLowerCase()];
+    if (!month) return null;
+    var monthName = Object.keys(MONTH_NAMES).find(function (name) {
+      return MONTH_NAMES[name] === month && name.length > 3;
+    });
+    return monthName
+      ? { month: month, year: match[2], display: titleCase(monthName.slice(0, 3)) + " " + match[2] }
+      : null;
+  }
+
+  function getAdvancedProfileValue(label) {
+    var elements = document.querySelectorAll("dt");
+    for (var i = 0; i < elements.length; i++) {
+      if ((elements[i].textContent || "").trim().toLowerCase() !== label.toLowerCase()) continue;
+      var value = elements[i].nextElementSibling;
+      if (!value || value.tagName !== "DD") {
+        value = elements[i].parentElement && elements[i].parentElement.querySelector("dd");
+      }
+      if (value) return value.textContent.replace(/\s+/g, " ").trim();
+    }
+    return "";
+  }
+
+  function getAdvancedProfileName() {
+    var labeledName = getAdvancedProfileValue("Full Name");
+    if (labeledName) return labeledName;
+    var heading = document.querySelector("#personDetails h1");
+    return heading ? heading.textContent.replace(/\s+/g, " ").trim() : "";
+  }
+
+  function getAdvancedProfileAliases() {
+    var aliases = [];
+    function addAlias(value) {
+      var alias = String(value || "").replace(/\s+/g, " ").trim();
+      if (!alias || aliases.some(function (existing) {
+        return existing.toLowerCase() === alias.toLowerCase();
+      })) {
+        return;
+      }
+      aliases.push(alias);
+    }
+
+    var labels = document.querySelectorAll("dt");
+    for (var i = 0; i < labels.length; i++) {
+      var label = (labels[i].textContent || "").trim().toLowerCase();
+      if (!/^(?:also\s+known\s+as|known\s+as|aka)$/.test(label)) continue;
+      var value = labels[i].nextElementSibling;
+      if (!value || value.tagName !== "DD") {
+        value = labels[i].parentElement && labels[i].parentElement.querySelector("dd");
+      }
+      if (!value) continue;
+      var aliasLinks = value.querySelectorAll("a");
+      if (aliasLinks.length) {
+        for (var linkIndex = 0; linkIndex < aliasLinks.length; linkIndex++) {
+          addAlias(aliasLinks[linkIndex].textContent);
+        }
+      } else {
+        (value.textContent || "").split(/[,;|]/).forEach(addAlias);
+      }
+    }
+
+    var nameLinks = document.querySelectorAll('#personDetails a[href*="/find/name/"], a[href*="/find/name/"]');
+    for (var nameIndex = 0; nameIndex < nameLinks.length; nameIndex++) {
+      addAlias(nameLinks[nameIndex].textContent);
+    }
+    return aliases;
+  }
+
+  function findAdvancedProfileAddresses() {
+    var addresses = [];
+    var addressSections = ["toc-current-address", "toc-previous-addresses"];
+    addressSections.forEach(function (id) {
+      var heading = document.getElementById(id);
+      var section = heading && heading.closest("section");
+      if (!section) return;
+
+      var links = section.querySelectorAll('a[href*="/address/"], a[data-original-href*="/find/address/"]');
+      for (var i = 0; i < links.length; i++) {
+        var parsed = parseAddress(links[i].textContent || "");
+        if (!parsed || !parsed.street || !parsed.city || !parsed.state || !parsed.zip) continue;
+
+        var url = "";
+        try {
+          var candidateUrl = new URL(links[i].href || links[i].getAttribute("href"), location.href);
+          if (
+            candidateUrl.protocol === "https:" &&
+            candidateUrl.hostname === "unmask.com" &&
+            candidateUrl.pathname.startsWith("/address/")
+          ) {
+            url = candidateUrl.href;
+          }
+        } catch (error) {}
+        if (!url) url = getUnmaskUrl(parsed);
+
+        if (!addresses.some(function (address) { return address.url === url; })) {
+          parsed.url = url;
+          addresses.push(parsed);
+        }
+      }
+    });
+    return addresses;
+  }
+
+  function findAdvancedProfilePhones(primaryPhone) {
+    var phones = [];
+    function addPhone(value) {
+      var text = String(value || "");
+      var match = text.match(/(?:\+?1[\s.-]?)?\(?(\d{3})\)?[\s.-]+(\d{3})[\s.-]+(\d{4})/);
+      var digits = text.replace(/\D/g, "");
+      if (!match && digits.length >= 10) {
+        digits = digits.slice(-10);
+        match = [digits, digits.slice(0, 3), digits.slice(3, 6), digits.slice(6)];
+      }
+      if (!match) return;
+      var phone = match[1] + "-" + match[2] + "-" + match[3];
+      if (phones.indexOf(phone) === -1) phones.push(phone);
+    }
+
+    addPhone(primaryPhone);
+    var telephoneLinks = document.querySelectorAll(
+      'a[href^="tel:"], a[href*="/find/phone/"], a[href*="/phone/"], [itemprop="telephone"]'
+    );
+    for (var i = 0; i < telephoneLinks.length; i++) {
+      addPhone(telephoneLinks[i].getAttribute("href") || telephoneLinks[i].textContent);
+    }
+
+    var labels = document.querySelectorAll("dt");
+    for (var labelIndex = 0; labelIndex < labels.length; labelIndex++) {
+      if (!/phone/i.test(labels[labelIndex].textContent || "")) continue;
+      var value = labels[labelIndex].nextElementSibling;
+      if (!value || value.tagName !== "DD") {
+        value = labels[labelIndex].parentElement && labels[labelIndex].parentElement.querySelector("dd");
+      }
+      if (value) addPhone(value.textContent);
+    }
+    return phones;
+  }
+
+  function scanAdvancedBirthDate(root) {
+    if (
+      location.hostname.replace(/^www\./, "") !== "advancedbackgroundchecks.com" ||
+      !location.pathname.startsWith("/find/person/") ||
+      !root.querySelectorAll
+    ) {
+      return;
+    }
+
+    var dateLabels = [];
+    if (root.matches && root.matches("dt")) dateLabels.push(root);
+    Array.prototype.push.apply(dateLabels, root.querySelectorAll("dt"));
+    dateLabels.forEach(function (dt) {
+      if ((dt.textContent || "").trim().toLowerCase() !== "birth date") return;
+      var value = dt.nextElementSibling;
+      if (!value || value.tagName !== "DD") {
+        value = dt.parentElement && dt.parentElement.querySelector("dd");
+      }
+      if (!value || value.querySelector("[data-link-opener-dob-search]")) return;
+
+      var dob = parseBirthMonthYear(value.textContent);
+      var fullName = getAdvancedProfileName();
+      var parsedName = parseName(fullName);
+      if (!dob || !parsedName || !parsedName.first || !parsedName.last) return;
+
+      if (!document.getElementById("link-opener-dob-status-animation")) {
+        var animationStyle = document.createElement("style");
+        animationStyle.id = "link-opener-dob-status-animation";
+        animationStyle.textContent = "@keyframes link-opener-dob-spin{to{transform:rotate(360deg)}}";
+        document.head.appendChild(animationStyle);
+      }
+
+      var button = document.createElement("button");
+      button.type = "button";
+      button.textContent = "Search";
+      button.setAttribute("data-link-opener-dob-search", "true");
+      button.style.cssText = "margin-right:8px;padding:2px 8px;border:1px solid #117fb6;border-radius:5px;background:#117fb6;color:#fff;font-size:12px;font-weight:600;line-height:1.5;cursor:pointer;vertical-align:middle;";
+
+      var status = document.createElement("span");
+      status.setAttribute("role", "status");
+      status.setAttribute("aria-live", "polite");
+      status.dataset.state = "idle";
+      status.style.cssText = "display:inline-flex;align-items:center;gap:6px;margin-left:7px;padding:3px 8px;border:1px solid #e2e8f0;border-radius:999px;background:#f8fafc;color:#64748b;font-family:inherit;font-size:11px;font-weight:600;line-height:1.25;vertical-align:middle;";
+      var indicator = document.createElement("span");
+      indicator.style.cssText = "width:8px;height:8px;flex:none;border:1.5px solid #bfdbfe;border-top-color:#2563eb;border-radius:50%;animation:link-opener-dob-spin .75s linear infinite;";
+      indicator.hidden = true;
+      var label = document.createElement("span");
+      var progress = document.createElement("span");
+      progress.track = document.createElement("span");
+      progress.track.style.cssText = "width:26px;height:3px;overflow:hidden;border-radius:99px;background:#dbeafe;";
+      progress.fill = document.createElement("span");
+      progress.fill.style.cssText = "display:block;width:0;height:100%;border-radius:inherit;background:#3b82f6;transition:width .25s ease;";
+      progress.track.appendChild(progress.fill);
+      progress.track.hidden = true;
+      progress.value = 0;
+      status.appendChild(indicator);
+      status.appendChild(label);
+      status.appendChild(progress.track);
+      value.insertBefore(button, value.firstChild);
+      value.insertBefore(document.createTextNode(" "), button.nextSibling);
+      value.appendChild(status);
+
+      button.addEventListener("click", function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        if (button.disabled) return;
+
+        var slug = slugify(parsedName.first + "-" + parsedName.last).toLowerCase();
+        var lookupId = Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 10);
+        var targetAliases = getAdvancedProfileAliases();
+        var phone = getAdvancedProfileValue("Primary Phone");
+        var phones = findAdvancedProfilePhones(phone);
+        var ageText = getAdvancedProfileValue("Age");
+        if (!ageText) {
+          var summaryText = document.querySelector("#personDetails");
+          ageText = summaryText ? summaryText.textContent : "";
+        }
+        var ageMatch = ageText.match(/\b(\d{1,3})\b/);
+        var addresses = findAdvancedProfileAddresses();
+        var searches = addresses.map(function (address) {
+          return { type: "address", url: address.url };
+        });
+        phones.forEach(function (number) {
+          var digits = number.replace(/\D/g, "");
+          searches.push({
+            type: "phone",
+            url: "https://unmask.com/phone/" +
+              digits.slice(0, 3) + "-" + digits.slice(3, 6) + "-" + digits.slice(6) + "/"
+          });
+        });
+        var nameSearchSlugs = [slug];
+        targetAliases.forEach(function (alias) {
+          var aliasName = parseName(alias);
+          if (!aliasName || !aliasName.first || !aliasName.last) return;
+          var aliasSlug = slugify(aliasName.first + "-" + aliasName.last).toLowerCase();
+          if (nameSearchSlugs.indexOf(aliasSlug) === -1) nameSearchSlugs.push(aliasSlug);
+        });
+        nameSearchSlugs.forEach(function (nameSlug) {
+          searches.push({ type: "name", url: "https://unmask.com/" + nameSlug + "/" });
+        });
+
+        var session = {
+          lookupId: lookupId,
+          targetName: fullName,
+          targetAliases: targetAliases,
+          peopleSearchUrl: "https://www.menstoppingviolence.org/people/" + slug + "/",
+          targetAge: ageMatch ? parseInt(ageMatch[1], 10) : null,
+          targetYear: dob.year,
+          targetDob: dob.display,
+          phone: phone,
+          phones: phones,
+          addresses: addresses,
+          searches: searches,
+          searchIndex: 0,
+          currentSearchType: searches[0].type,
+          person: {
+            fullName: fullName,
+            phone: phone,
+            phones: phones
+          },
+          searchUrl: searches[0].url
+        };
+
+        button.disabled = true;
+        var activeLookup = {
+          button: button,
+          status: status,
+          label: label,
+          indicator: indicator,
+          progress: progress,
+          lookupId: lookupId,
+          unmaskDone: false,
+          peopleDone: false,
+          unmaskStatus: "",
+          peopleStatus: ""
+        };
+        activeDobLookups[lookupId] = activeLookup;
+        setDobLookupStatus(
+          activeLookup,
+          searches[0].type === "address" ? "Address · 1/" + searches.length : "Starting",
+          "searching",
+          "Searching " + addresses.length + " addresses, " + phones.length + " phone numbers, then name for " + dob.display
+        );
+        progress.value = 1 / searches.length;
+        progress.fill.style.width = Math.max(8, Math.round(progress.value * 100)) + "%";
+
+        chrome.runtime.sendMessage(
+          { action: "START_EXACT_DOB_LOOKUP", session: session },
+          function (response) {
+            if (chrome.runtime.lastError || !response || !response.ok) {
+              delete activeDobLookups[lookupId];
+              button.disabled = false;
+              button.textContent = "Search";
+              setDobLookupStatus(
+                activeLookup,
+                "Start failed",
+                "error",
+                chrome.runtime.lastError
+                  ? chrome.runtime.lastError.message
+                  : (response && response.error) || "Extension did not respond."
+              );
+            }
+          }
+        );
+      });
+    });
+  }
+
   function scan(root) {
+    scanAdvancedBirthDate(root);
     if (root.nodeType === Node.ELEMENT_NODE && root.matches) {
       if (root.matches(SELECTOR_ADDRESS)) processAddressLink(root);
       if (

@@ -22,8 +22,16 @@ Chrome/Edge extension that finds address and name links on people search sites, 
 - ⌨️ **Ctrl + Left Click (Original Link Bypass)**:
   - Holding **Ctrl** (or **Cmd** on Mac) while clicking any button or link opens the original URL.
 
+- 🎂 **Exact DOB Search on AdvancedBackgroundChecks**:
+  - Person profiles show a **Search** button beside the Birth Date.
+  - Search checks all current and previous addresses first, then each available phone number, and searches by the profile name and known-as names last.
+  - Unmask result cards with open-ended ages such as **80+** are not rejected on age alone; the opened profile still has to pass the existing identity checks and exact DOB match.
+  - In parallel, it opens the plain Men Stopping Violence name-search URL on either `www` or apex domain. That tab requests its target identity from the extension by tab ID, scans the visible result cards, and immediately reports a matching name and exact DOB to the source profile. The first exact DOB match stops the other search tab.
+  - A compact live progress indicator shows the current search stage. A result is reported only when both birth month and year match exactly; the lookup runs in an inactive Unmask tab without switching away from your current tab. Complete any security check manually if one appears.
+
 - ⚙️ **Popup Settings UI**:
-  - Light font (`font-weight: 300`) minimalist dark UI with real-time toggle syncing.
+  - Minimal light UI with real-time toggle syncing.
+  - **Refresh** saves pending settings and reloads the extension; **Save & Close** persists the settings before closing the popup.
 
 ## Install / Reload
 

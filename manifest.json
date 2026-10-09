@@ -30,6 +30,19 @@
       "matches": ["https://*.mercuryinsurance.com/*", "https://mercuryinsurance.com/*"],
       "js": ["mercury_automation.js"],
       "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://*.unmask.com/*", "https://unmask.com/*"],
+      "js": ["unmask_automation.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://www.menstoppingviolence.org/people/*",
+        "https://menstoppingviolence.org/people/*"
+      ],
+      "js": ["people_search_automation.js"],
+      "run_at": "document_idle"
     }
   ]
 }
