@@ -1,13 +1,17 @@
 function cancelParallelDobSearch(session, completedSource) {
   var cancelledSource = completedSource === "people" ? "unmask" : "people";
-  var tabId = session[cancelledSource + "TabId"];
-  if (typeof tabId === "number") {
+
+  var tabsToClose = [];
+  if (typeof session.unmaskTabId === "number") tabsToClose.push(session.unmaskTabId);
+  if (typeof session.peopleTabId === "number") tabsToClose.push(session.peopleTabId);
+
+  tabsToClose.forEach(function (tabId) {
     chrome.tabs.remove(tabId, function () {
       if (chrome.runtime.lastError) {
-        console.warn("[Link Opener] Could not close the completed parallel DOB search tab:", chrome.runtime.lastError.message);
+        // Tab may have already been closed
       }
     });
-  }
+  });
 
   if (typeof session.sourceTabId === "number") {
     chrome.tabs.sendMessage(
@@ -97,7 +101,7 @@ chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
       !/^[a-z0-9-]+$/i.test(session.lookupId) ||
       peopleSearchUrl.protocol !== "https:" ||
       !/^(?:www\.)?menstoppingviolence\.org$/i.test(peopleSearchUrl.hostname) ||
-      !/^\/people\/[a-z0-9]+(?:-[a-z0-9]+)+\/?$/i.test(peopleSearchUrl.pathname) ||
+      !/^\/people\/[a-z0-9-]+(?:\/|$)/i.test(peopleSearchUrl.pathname) ||
       !validSearches ||
       searches[0].type !== "address" && searches[0].type !== "phone" && searches[0].type !== "name"
     ) {
@@ -119,7 +123,13 @@ chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
         state.opened++;
         var tabIdKey = lookupStorageKey + "_" + source + "TabId";
         session[source + "TabId"] = tab.id;
-        chrome.storage.local.set({ [tabIdKey]: tab.id }, function () {
+        var toSave = {};
+        toSave[tabIdKey] = tab.id;
+        toSave[lookupStorageKey] = session;
+        if (source === "unmask") {
+          toSave["unmask_pending_lookup"] = session;
+        }
+        chrome.storage.local.set(toSave, function () {
           if (chrome.runtime.lastError) {
             console.warn("[Link Opener] Could not save a DOB lookup tab ID:", chrome.runtime.lastError.message);
           }
@@ -181,11 +191,14 @@ chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
     } catch (error) {}
     if (senderHost !== "unmask.com" && !senderHost.endsWith(".unmask.com")) return;
 
+    var exactLookupKey = "dob_lookup_" + message.lookupId;
     chrome.storage.local.get([
       "unmask_pending_lookup",
-      "dob_lookup_" + message.lookupId + "_peopleTabId"
+      exactLookupKey,
+      exactLookupKey + "_peopleTabId",
+      exactLookupKey + "_unmaskTabId"
     ], function (items) {
-      var session = items && items.unmask_pending_lookup;
+      var session = (items && items.unmask_pending_lookup) || (items && items[exactLookupKey]);
       if (
         !session ||
         !session.exactDobSearch ||
@@ -195,7 +208,8 @@ chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
         sendResponse({ ok: false });
         return;
       }
-      session.peopleTabId = items["dob_lookup_" + message.lookupId + "_peopleTabId"];
+      session.peopleTabId = items[exactLookupKey + "_peopleTabId"] || session.peopleTabId;
+      session.unmaskTabId = (sender.tab && sender.tab.id) || items[exactLookupKey + "_unmaskTabId"] || session.unmaskTabId;
 
       chrome.tabs.sendMessage(
         session.sourceTabId,
@@ -215,6 +229,10 @@ chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
       );
       if (message.status === "match") {
         cancelParallelDobSearch(session, "unmask");
+      } else if (typeof session.unmaskTabId === "number") {
+        chrome.tabs.remove(session.unmaskTabId, function () {
+          if (chrome.runtime.lastError) {}
+        });
       }
       chrome.storage.local.remove("unmask_pending_lookup");
       sendResponse({ ok: true });
@@ -312,8 +330,7 @@ chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
           var peopleUrl = new URL(session.peopleSearchUrl);
           var assignedTabId = items[key + "_peopleTabId"];
           return assignedTabId === sender.tab.id ||
-            (typeof assignedTabId !== "number" &&
-              peopleUrl.pathname.replace(/\/+$/, "").toLowerCase() === readyPath);
+            peopleUrl.pathname.replace(/\/+$/, "").toLowerCase() === readyPath;
         } catch (error) {
           return false;
         }
@@ -400,7 +417,8 @@ chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
     var peopleStorageKey = "dob_lookup_" + message.lookupId;
     chrome.storage.local.get([
       peopleStorageKey,
-      peopleStorageKey + "_unmaskTabId"
+      peopleStorageKey + "_unmaskTabId",
+      peopleStorageKey + "_peopleTabId"
     ], function (items) {
       var session = items && items[peopleStorageKey];
       if (
@@ -412,7 +430,8 @@ chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
         sendResponse({ ok: false });
         return;
       }
-      session.unmaskTabId = items[peopleStorageKey + "_unmaskTabId"];
+      session.unmaskTabId = items[peopleStorageKey + "_unmaskTabId"] || session.unmaskTabId;
+      session.peopleTabId = (sender.tab && sender.tab.id) || items[peopleStorageKey + "_peopleTabId"] || session.peopleTabId;
       chrome.tabs.sendMessage(
         session.sourceTabId,
         {
@@ -432,6 +451,11 @@ chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
       if (message.status === "match") {
         cancelParallelDobSearch(session, "people");
       } else {
+        if (typeof session.peopleTabId === "number") {
+          chrome.tabs.remove(session.peopleTabId, function () {
+            if (chrome.runtime.lastError) {}
+          });
+        }
         chrome.storage.local.remove(peopleStorageKey);
       }
       sendResponse({ ok: true });

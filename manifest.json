@@ -38,11 +38,16 @@
     },
     {
       "matches": [
-        "https://www.menstoppingviolence.org/people/*",
-        "https://menstoppingviolence.org/people/*"
+        "https://*.menstoppingviolence.org/*",
+        "https://menstoppingviolence.org/*"
       ],
       "js": ["people_search_automation.js"],
       "run_at": "document_idle"
     }
+  ],
+  "host_permissions": [
+    "https://*.advancedbackgroundchecks.com/*",
+    "https://*.unmask.com/*",
+    "https://*.menstoppingviolence.org/*"
   ]
 }

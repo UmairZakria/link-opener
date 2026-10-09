@@ -141,6 +141,34 @@
     });
   }
 
+  function copyToClipboard(text) {
+    if (!text) return;
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).catch(function () {
+          fallbackCopy(text);
+        });
+      } else {
+        fallbackCopy(text);
+      }
+    } catch (e) {
+      fallbackCopy(text);
+    }
+  }
+
+  function fallbackCopy(text) {
+    try {
+      var textarea = document.createElement("textarea");
+      textarea.value = text;
+      textarea.style.position = "fixed";
+      textarea.style.opacity = "0";
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textarea);
+    } catch (e) {}
+  }
+
   function updateDobLookupResult(lookup) {
     var matches = [];
     if (lookup.unmaskStatus === "match") {
@@ -151,6 +179,7 @@
     }
     if (matches.length) {
       lookup.matchFound = true;
+      copyToClipboard(matches[0].dob);
       setDobLookupStatus(
         lookup,
         "Exact match · " + matches[0].dob,
@@ -160,11 +189,9 @@
             (match.name ? match.name + " · " : "") + match.dob;
         }).join(" | ")
       );
-      if (lookup.unmaskDone && lookup.peopleDone) {
-        delete activeDobLookups[lookup.lookupId];
-        lookup.button.disabled = false;
-        lookup.button.textContent = "Search";
-      }
+      lookup.button.disabled = false;
+      lookup.button.textContent = "Search";
+      delete activeDobLookups[lookup.lookupId];
       return;
     }
 
